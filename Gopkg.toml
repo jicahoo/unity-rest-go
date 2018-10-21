@@ -29,6 +29,10 @@
   name = "github.com/bitly/go-simplejson"
   version = "0.5.0"
 
+[[constraint]]
+  name = "github.com/levigross/grequests"
+  version = "0.10"
+
 [prune]
   go-tests = true
   unused-packages = true

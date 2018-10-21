@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
+	"github.com/levigross/grequests"
 )
 var json_str string = `{"rc" : 0,
   "error" : "Success",
@@ -197,5 +198,25 @@ func main() {
 		}
 	}
 
+	url := "https://jsonplaceholder.typicode.com/todos"
+	ro := &grequests.RequestOptions{
+		Auth: []string{"Levi", "Bot"},
+		Params: map[string]string{"one": "two"},
+		Headers: map[string]string{"X-EMC-REST-CLIENT": "true"},
+	}
+
+	session := grequests.NewSession(nil)
+
+	//https://godoc.org/github.com/levigross/grequests#NewSession
+	resp, err := session.Get(url, ro)
+
+	headers := resp.Header
+	for k,v := range headers {
+		fmt.Println(k,v)
+	}
+	fmt.Println(resp.StatusCode)
+	fmt.Println(resp.String())
+
+	//fmt.Println(resp)
 
 }
