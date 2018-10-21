@@ -198,11 +198,19 @@ func main() {
 		}
 	}
 
+	mgmtIp := "10.141.68.200"
+	userName := "admin"
+	password := "Passsword123!"
+	unityUrl := fmt.Sprintf("https://%s/api/types/user/instances", mgmtIp)
+	fmt.Println(unityUrl)
+
+
 	url := "https://jsonplaceholder.typicode.com/todos"
 	ro := &grequests.RequestOptions{
-		Auth: []string{"Levi", "Bot"},
-		Params: map[string]string{"one": "two"},
+		Auth: []string{userName, password},
+		//Params: map[string]string{"one": "two"},
 		Headers: map[string]string{"X-EMC-REST-CLIENT": "true"},
+		InsecureSkipVerify: true,
 	}
 
 	session := grequests.NewSession(nil)
@@ -215,7 +223,7 @@ func main() {
 		fmt.Println(k,v)
 	}
 	fmt.Println(resp.StatusCode)
-	fmt.Println(resp.String())
+	//fmt.Println(resp.String())
 
 	//fmt.Println(resp)
 
