@@ -163,6 +163,20 @@ func (conn *Connection) get(url string) (int, string) {
 	return re.StatusCode, respStr
 }
 
+func (conn *Connection) post(url string, body string) (int, string) {
+	my_req, _ := conn.newRequest(url, body, "POST")
+	re, _ := conn.do(my_req)
+	respStr := getRespBody(re)
+	return re.StatusCode, respStr
+}
+
+func (conn *Connection) delete(url string) (int, string) {
+	my_req, _ := conn.newRequest(url, "", "DELETE")
+	re, _ := conn.do(my_req)
+	respStr := getRespBody(re)
+	return re.StatusCode, respStr
+}
+
 func init() {
 	logrus.SetLevel(logrus.DebugLevel)
 }
@@ -202,5 +216,17 @@ func main() {
 		content := child.Path("content")
 		logrus.Info(content.Path("name").String())
 	}
+
+	create_user_body := `{"name":"lake", "role":"operator", "password":"Password123!"}`
+	unityUrl = fmt.Sprintf("https://%s/api/types/user/instances", mgmtIp)
+	status, respStr = conn.post(unityUrl, create_user_body)
+	logrus.Info(respStr)
+	jsonParsed, err = gabs.ParseJSON([]byte(respStr))
+	userId := jsonParsed.Path("content.id").Data().(string)
+	logrus.Info("user id: ", userId)
+	unityUrl = fmt.Sprintf("https://%s/api/instances/user/%s", mgmtIp, userId)
+	logrus.Info("Delete user at url: ", unityUrl)
+	status, respStr = conn.delete(unityUrl)
+	logrus.Info("Status for delete: ", status)
 
 }
