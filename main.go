@@ -3,7 +3,9 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/Jeffail/gabs"
 	"github.com/bitly/go-simplejson"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/publicsuffix"
 	"io/ioutil"
 	"net/http"
@@ -50,15 +52,18 @@ func (conn *Connection) init() *Connection {
 	conn.client = &http.Client{
 		Transport: transport(), Jar: cookieJar(), CheckRedirect: redirectPolicyFunc}
 	conn.fields["type"] = ""
+	conn.getNewCsrfToken()
 	return conn
 }
 
 func (conn *Connection) do(req *http.Request) (*http.Response, error) {
+	logrus.Info("CSRF: ", conn.csrf)
 	req.Header.Set("EMC-CSRF-TOKEN", conn.csrf)
 	resp, err := conn.client.Do(req)
 	//log.WithField("request", req).Debug("send request.")
 	if err != nil {
 		//log.WithError(err).Error("http request error.")
+		logrus.Error(err)
 		return nil, err
 	}
 	//log.WithField("response", resp).Debug("got response.")
@@ -112,6 +117,16 @@ func (conn *Connection) updateCsrf(resp *http.Response) {
 	}
 }
 
+func (conn *Connection) getNewCsrfToken() {
+	unityUrl := fmt.Sprintf("https://%s/api/types/user/instances?fields=name", conn.ip)
+	resp, err := conn.request(unityUrl, "", "GET")
+	if err != nil {
+		logrus.Error("Failed to get new csrf token")
+	} else {
+		conn.updateCsrf(resp)
+	}
+}
+
 func (conn *Connection) retryWithCsrfToken(req *http.Request) (*http.Response, error) {
 	var (
 		resp *http.Response
@@ -119,8 +134,7 @@ func (conn *Connection) retryWithCsrfToken(req *http.Request) (*http.Response, e
 	)
 
 	//log.Info("token invalid, try to get a new token.")
-	pathUser := "/api/types/user/instances"
-	resp, err = conn.request(pathUser, "", "GET")
+	conn.getNewCsrfToken()
 	if err != nil {
 		//log.WithError(err).Error("failed to get csrf-token.")
 	} else {
@@ -135,12 +149,18 @@ func getRespBody(resp *http.Response) string {
 
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		//log.WithError(err).Error("failed to read response body.")
-		fmt.Errorf("Erro")
+		logrus.WithError(err).Error("failed to read response body.")
 	}
 	respBody := string(bytes)
-	//log.WithField("body", respBody).Debug(resp)
+	logrus.WithField("body", respBody).Debug(resp)
 	return respBody
+}
+
+func (conn *Connection) get(url string) (int, string) {
+	my_req, _ := conn.newRequest(url, "", "GET")
+	re, _ := conn.do(my_req)
+	respStr := getRespBody(re)
+	return re.StatusCode, respStr
 }
 
 func main() {
@@ -149,11 +169,12 @@ func main() {
 	mgmtIp := "10.228.49.124"
 	userName := "admin"
 	password := "Password123!"
-	unityUrl := fmt.Sprintf("https://%s/api/types/user/instances?fields=name", mgmtIp)
 	conn := NewConnection(mgmtIp, userName, password)
-	my_req, _ := conn.newRequest(unityUrl, "", "GET")
-	re, _ := conn.do(my_req)
-	respStr := getRespBody(re)
+
+	unityUrl := fmt.Sprintf("https://%s/api/types/user/instances?fields=name", mgmtIp)
+	status, respStr := conn.get(unityUrl)
+	logrus.Info("Got response status: ", status)
+
 	res, _ := simplejson.NewJson([]byte(respStr))
 
 	entries, _ := res.Get("entries").Array()
@@ -164,7 +185,6 @@ func main() {
 				fmt.Println(lun["id"])
 				fmt.Println(lun["name"])
 			}
-
 		}
 	}
 }
