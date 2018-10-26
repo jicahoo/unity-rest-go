@@ -163,6 +163,10 @@ func (conn *Connection) get(url string) (int, string) {
 	return re.StatusCode, respStr
 }
 
+func init() {
+	logrus.SetLevel(logrus.DebugLevel)
+}
+
 func main() {
 	fmt.Println("Fire!")
 
@@ -174,6 +178,7 @@ func main() {
 	unityUrl := fmt.Sprintf("https://%s/api/types/user/instances?fields=name", mgmtIp)
 	status, respStr := conn.get(unityUrl)
 	logrus.Info("Got response status: ", status)
+	logrus.Debug("Got response body: ", respStr)
 
 	res, _ := simplejson.NewJson([]byte(respStr))
 
@@ -187,4 +192,15 @@ func main() {
 			}
 		}
 	}
+
+	jsonParsed, err := gabs.ParseJSON([]byte(respStr))
+	if err != nil {
+		logrus.Error("Json parsed error", err)
+	}
+	children, _ := jsonParsed.S("entries").Children()
+	for _, child := range children {
+		content := child.Path("content")
+		logrus.Info(content.Path("name").String())
+	}
+
 }
